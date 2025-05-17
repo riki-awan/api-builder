@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en" >
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PyAPI Admin Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style>
+    /* Scrollbar for routes list */
+    #routes-list {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    #routes-list::-webkit-scrollbar {
+      width: 8px;
+    }
+    #routes-list::-webkit-scrollbar-thumb {
+      background-color: rgba(59, 130, 246, 0.6);
+      border-radius: 10px;
+    }
+  </style>
+</head>
+
+<body class="bg-gray-100 flex min-h-screen font-sans">
+
+  <!-- Sidebar -->
+  <aside class="w-64 bg-white shadow-md flex flex-col">
+    <div class="p-6 border-b border-gray-200">
+      <h1 class="text-2xl font-extrabold text-blue-600">PyAPI Admin</h1>
+    </div>
+    <nav class="flex-1 p-4 space-y-2 text-gray-600">
+      <a href="#" class="block py-2 px-3 rounded-md hover:bg-blue-100 hover:text-blue-700 font-semibold">Dashboard</a>
+      <a href="#" class="block py-2 px-3 rounded-md hover:bg-blue-100 hover:text-blue-700">Manage Routes</a>
+      <a href="#" class="block py-2 px-3 rounded-md hover:bg-blue-100 hover:text-blue-700">Settings</a>
+    </nav>
+    <div class="p-4 border-t border-gray-200 text-sm text-gray-500">
+      &copy; 2025 PyAPI Framework
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <main class="flex-1 p-8">
+    <header class="flex items-center justify-between mb-8">
+      <h2 class="text-3xl font-bold text-gray-800">API Routes Dashboard</h2>
+      <button id="loadRoutesBtn"
+        class="bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md px-5 py-2 transition duration-200 flex items-center gap-2">
+        <svg id="refreshIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 animate-spin hidden" fill="none" viewBox="0 0 24 24"
+          stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M4 4v5h.582m14.356-1a9 9 0 11-7.78-7.78" />
+        </svg>
+        <span id="loadRoutesText">Load Routes</span>
+      </button>
+    </header>
+
+    <section class="mb-10">
+      <div id="routes-list" class="space-y-3 bg-white rounded-lg shadow p-6 overflow-y-auto max-h-[400px]">
+        <!-- Routes akan muncul di sini -->
+      </div>
+    </section>
+
+    <section class="max-w-lg bg-white rounded-lg shadow p-6 mx-auto">
+      <h3 class="text-xl font-semibold mb-5 border-b pb-3 text-gray-700">Add New Route</h3>
+
+      <form id="route-form" class="space-y-5">
+        <div>
+          <label for="path" class="block font-medium mb-1 text-gray-600">Path</label>
+          <input type="text" id="path" placeholder="/api/newroute" required
+            class="w-full border border-gray-300 rounded-md px-4 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-600" />
+        </div>
+
+        <div>
+          <label for="method" class="block font-medium mb-1 text-gray-600">Method</label>
+          <select id="method"
+            class="w-full border border-gray-300 rounded-md px-4 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-600">
+            <option>GET</option>
+            <option>POST</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="auth" class="block font-medium mb-1 text-gray-600">Auth</label>
+          <select id="auth"
+            class="w-full border border-gray-300 rounded-md px-4 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-600">
+            <option value="">None</option>
+            <option value="token">Token</option>
+          </select>
+        </div>
+
+        <button
+          class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold rounded-md px-5 py-3 transition duration-200"
+          type="submit">Add Route</button>
+      </form>
+    </section>
+
+    <!-- Notification -->
+    <div id="notification" class="fixed bottom-5 right-5 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg opacity-0 pointer-events-none transition-opacity duration-300"></div>
+
+  </main>
+
+  <script>
+    const routesList = document.getElementById('routes-list');
+    const loadRoutesBtn = document.getElementById('loadRoutesBtn');
+    const refreshIcon = document.getElementById('refreshIcon');
+    const loadRoutesText = document.getElementById('loadRoutesText');
+    const notification = document.getElementById('notification');
+
+    function showNotification(message, success = true) {
+      notification.textContent = message;
+      notification.style.backgroundColor = success ? '#16a34a' : '#dc2626';
+      notification.classList.remove('opacity-0', 'pointer-events-none');
+      setTimeout(() => {
+        notification.classList.add('opacity-0', 'pointer-events-none');
+      }, 3000);
+    }
+
+    async function loadRoutes() {
+      try {
+        refreshIcon.classList.remove('hidden');
+        loadRoutesText.textContent = 'Loading...';
+
+        const res = await fetch('/api/routes');
+        if (!res.ok) throw new Error('Failed to load routes');
+        const routes = await res.json();
+
+        routesList.innerHTML = '';
+
+        if (routes.length === 0) {
+          routesList.innerHTML = `<p class="text-center text-gray-500">No routes available.</p>`;
+          return;
+        }
+
+        routes.forEach(r => {
+          const card = document.createElement('div');
+          card.className = "flex justify-between items-center bg-gray-50 p-4 rounded-lg shadow hover:shadow-md transition duration-200";
+
+          const left = document.createElement('div');
+
+          const methodBadge = document.createElement('span');
+          methodBadge.textContent = r.method;
+          methodBadge.className = "inline-block px-3 py-1 rounded-md font-semibold text-white mr-3 " +
+            (r.method === 'GET' ? 'bg-blue-600' : 'bg-yellow-500');
+
+          const pathElem = document.createElement('a');
+          pathElem.textContent = r.path;
+          pathElem.href = r.path;
+          pathElem.target = "_blank";
+          pathElem.rel = "noopener noreferrer";
+          pathElem.className = "text-lg font-semibold text-gray-800 hover:text-blue-600";
+
+          left.appendChild(methodBadge);
+          left.appendChild(pathElem);
+
+          const authElem = document.createElement('span');
+          authElem.textContent = `Auth: ${r.auth || 'None'}`;
+          authElem.className = "text-sm text-gray-500 italic";
+
+          card.appendChild(left);
+          card.appendChild(authElem);
+
+          routesList.appendChild(card);
+        });
+      } catch (err) {
+        showNotification(err.message, false);
+      } finally {
+        refreshIcon.classList.add('hidden');
+        loadRoutesText.textContent = 'Load Routes';
+      }
+    }
+
+    document.getElementById('route-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const path = document.getElementById('path').value.trim();
+      const method = document.getElementById('method').value;
+      const auth = document.getElementById('auth').value;
+
+      try {
+        const res = await fetch('/api/routes/add', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path, method, auth })
+        });
+
+        const result = await res.json();
+        showNotification(result.message || JSON.stringify(result), result.success);
+
+        if (result.success) {
+          await fetch('/api/routes/reload', { method: 'POST' });
+          loadRoutes();
+          e.target.reset();
+        }
+      } catch (err) {
+        showNotification("Failed to add route.", false);
+      }
+    });
+
+    loadRoutes();
+  </script>
+
+</body>
+
+</html>
