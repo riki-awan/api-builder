@@ -6,4 +6,5 @@ def generic_handler(request):
 
 routes = [
     {'path': '/api/test', 'method': 'GET', 'auth': '', 'handler': generic_handler},
+    {'path': '/api/users', 'method': 'GET', 'auth': '', 'handler': generic_handler},
 ]
